@@ -1,9 +1,6 @@
 # College Management System
 
-[![MERN Stack](https://img.shields.io/badge/Stack-MERN-blue)](https://www.mongodb.com/mern-stack)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-v14+-green)](https://nodejs.org)
-[![React](https://img.shields.io/badge/React-v17+-blue)](https://reactjs.org)
+
 
 A comprehensive MERN stack-based College Management System that helps manage academic activities, student information, faculty details, and administrative tasks. This system streamlines the management of educational institutions by providing a centralized platform for administrators, faculty, and students.
 
@@ -48,4 +45,3 @@ A comprehensive MERN stack-based College Management System that helps manage aca
 
 
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
