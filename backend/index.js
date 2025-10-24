@@ -4,13 +4,26 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const connectToMongo = require("./database/db");
+// const connectToMongo = require("./database/db");
 
 const app = express();
 
 // ✅ Connect to MongoDB
-connectToMongo();
 
+const mongoose = require("mongoose");
+const mongoURI = process.env.MONGODB_URI;
+
+const connectToMongo = () => {
+  mongoose
+    .connect(mongoURI, { useNewUrlParser: true })
+    .then(() => {
+      console.log("Connected to MongoDB Successfully");
+    })
+    .catch((error) => {
+      console.error("Error connecting to MongoDB", error);
+    });
+};
+connectToMongo();
 // ✅ Always use Render's PORT or fallback to 4000 for local dev
 const port = process.env.PORT || 4000;
 
