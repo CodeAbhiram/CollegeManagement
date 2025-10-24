@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { FiLogIn } from "react-icons/fi";
-import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import { setUserToken } from "../redux/actions";
 import { useDispatch } from "react-redux";
+import { setUserToken } from "../redux/actions";
 import CustomButton from "../components/CustomButton";
 import axiosWrapper from "../utils/AxiosWrapper";
+
 const USER_TYPES = {
   STUDENT: "Student",
   FACULTY: "Faculty",
@@ -114,15 +114,18 @@ const Login = () => {
     }
 
     try {
-      const response = await axiosWrapper.post(
+      const res = await axiosWrapper.post(
         `/${selected.toLowerCase()}/login`,
-        formData,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        formData
       );
 
-      const { token } = response.data.data;
+      // Safe destructuring
+      const responseData = res?.data || res;
+      if (!responseData || !responseData.token) {
+        throw new Error(responseData?.message || "Login failed");
+      }
+
+      const { token } = responseData;
       localStorage.setItem("userToken", token);
       localStorage.setItem("userType", selected);
       dispatch(setUserToken(token));
@@ -130,7 +133,7 @@ const Login = () => {
     } catch (error) {
       toast.dismiss();
       console.error(error);
-      toast.error(error.response?.data?.message || "Login failed");
+      toast.error(error.message || "Login failed");
     }
   };
 
