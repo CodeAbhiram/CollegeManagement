@@ -8,9 +8,9 @@ const {
   deleteBranchController,
 } = require("../controllers/branch.controller");
 
-router.get("/", auth, getBranchController);
-router.post("/", auth, addBranchController);
-router.patch("/:id", auth, updateBranchController);
-router.delete("/:id", auth, deleteBranchController);
+router.get("/", getBranchController);
+router.post("/", addBranchController);
+router.patch("/:id", updateBranchController);
+router.delete("/:id", deleteBranchController);
 
 module.exports = router;
