@@ -7,37 +7,24 @@ import { setUserToken } from "../redux/actions";
 import CustomButton from "../components/CustomButton";
 import axiosWrapper from "../utils/AxiosWrapper";
 
-const USER_TYPES = ["Student", "Faculty", "Admin"];
+const USER_TYPES = {
+  STUDENT: "Student",
+  FACULTY: "Faculty",
+  ADMIN: "Admin",
+};
 
-const UserTypeSelector = ({ selected, onSelect }) => (
-  <div className="flex justify-center gap-4 mb-8">
-    {USER_TYPES.map((type) => (
-      <button
-        key={type}
-        onClick={() => onSelect(type)}
-        className={`px-5 py-2 text-sm font-medium rounded-full transition duration-200 ${
-          selected === type
-            ? "bg-blue-600 text-white shadow"
-            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-        }`}
-      >
-        {type}
-      </button>
-    ))}
-  </div>
-);
-
-const LoginForm = ({ selected, formData, setFormData, onSubmit }) => (
+const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
   <form
     className="w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-200"
     onSubmit={onSubmit}
   >
     <div className="mb-6">
-      <label className="block text-gray-800 text-sm font-medium mb-2">
+      <label className="block text-gray-800 text-sm font-medium mb-2" htmlFor="email">
         {selected} Email
       </label>
       <input
         type="email"
+        id="email"
         required
         className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={formData.email}
@@ -45,11 +32,12 @@ const LoginForm = ({ selected, formData, setFormData, onSubmit }) => (
       />
     </div>
     <div className="mb-6">
-      <label className="block text-gray-800 text-sm font-medium mb-2">
+      <label className="block text-gray-800 text-sm font-medium mb-2" htmlFor="password">
         Password
       </label>
       <input
         type="password"
+        id="password"
         required
         className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={formData.password}
@@ -71,29 +59,32 @@ const LoginForm = ({ selected, formData, setFormData, onSubmit }) => (
   </form>
 );
 
+const UserTypeSelector = ({ selected, onSelect }) => (
+  <div className="flex justify-center gap-4 mb-8">
+    {Object.values(USER_TYPES).map((type) => (
+      <button
+        key={type}
+        onClick={() => onSelect(type)}
+        className={`px-5 py-2 text-sm font-medium rounded-full transition duration-200 ${
+          selected === type
+            ? "bg-blue-600 text-white shadow"
+            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+        }`}
+      >
+        {type}
+      </button>
+    ))}
+  </div>
+);
+
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryType = searchParams.get("type");
+  const type = searchParams.get("type");
 
-  const [selected, setSelected] = useState("Student");
   const [formData, setFormData] = useState({ email: "", password: "" });
-
-  // Update user type from query params if available
-  useEffect(() => {
-    if (queryType) {
-      const capitalized = queryType.charAt(0).toUpperCase() + queryType.slice(1);
-      if (USER_TYPES.includes(capitalized)) setSelected(capitalized);
-    }
-  }, [queryType]);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    const token = localStorage.getItem("userToken");
-    const userType = localStorage.getItem("userType");
-    if (token && userType) navigate(`/${userType.toLowerCase()}`);
-  }, [navigate]);
+  const [selected, setSelected] = useState(USER_TYPES.STUDENT);
 
   const handleUserTypeSelect = (type) => {
     setSelected(type);
@@ -102,46 +93,57 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all fields");
       return;
     }
 
     try {
-      const { data } = await axiosWrapper.post(
-        `/${selected.toLowerCase()}/login`,
-        formData
-      );
+      const res = await axiosWrapper.post(`/${selected.toLowerCase()}/login`, formData);
+      const responseData = res?.data;
 
-      if (!data || !data.token) {
-        toast.error(data?.message || "Login failed");
-        return;
+      // Backend wraps token inside "data"
+      if (!responseData || !responseData.data?.token) {
+        throw new Error(responseData?.message || "Login failed");
       }
 
-      localStorage.setItem("userToken", data.token);
+      const { token } = responseData.data;
+
+      // Store token and user type
+      localStorage.setItem("userToken", token);
       localStorage.setItem("userType", selected);
-      dispatch(setUserToken(data.token));
+      dispatch(setUserToken(token));
+
+      toast.success(responseData.message || "Login successful");
       navigate(`/${selected.toLowerCase()}`);
-      toast.success("Login successful!");
-    } catch (err) {
-      console.error("Login error:", err.response?.data || err);
-      toast.error(err.response?.data?.message || "Login failed");
+    } catch (error) {
+      toast.dismiss();
+      console.error("Login error:", error);
+      toast.error(error.message || "Login failed");
     }
   };
+
+  useEffect(() => {
+    const userToken = localStorage.getItem("userToken");
+    if (userToken) {
+      navigate(`/${localStorage.getItem("userType").toLowerCase()}`);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (type) {
+      const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
+      setSelected(capitalized);
+    }
+  }, [type]);
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-100 via-white to-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-2xl lg:w-1/2 px-6 py-12">
-        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">
-          {selected} Login
-        </h1>
+        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">{selected} Login</h1>
         <UserTypeSelector selected={selected} onSelect={handleUserTypeSelect} />
-        <LoginForm
-          selected={selected}
-          formData={formData}
-          setFormData={setFormData}
-          onSubmit={handleSubmit}
-        />
+        <LoginForm selected={selected} onSubmit={handleSubmit} formData={formData} setFormData={setFormData} />
       </div>
       <Toaster position="bottom-center" />
     </div>
