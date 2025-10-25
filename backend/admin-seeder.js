@@ -1,6 +1,20 @@
 const adminDetails = require("./models/details/admin-details.model");
-const connectToMongo = require("./database/db");
+// const connectToMongo = require("./database/db");
+// const mongoose = require("mongoose");
+require("dotenv").config();
 const mongoose = require("mongoose");
+const mongoURI = process.env.MONGODB_URI;
+
+const connectToMongo = () => {
+  mongoose
+    .connect(mongoURI, { useNewUrlParser: true })
+    .then(() => {
+      console.log("Connected to MongoDB Successfully");
+    })
+    .catch((error) => {
+      console.error("Error connecting to MongoDB", error);
+    });
+};
 
 const seedData = async () => {
   try {
