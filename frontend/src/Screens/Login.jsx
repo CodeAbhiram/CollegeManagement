@@ -7,70 +7,11 @@ import { setUserToken } from "../redux/actions";
 import CustomButton from "../components/CustomButton";
 import axiosWrapper from "../utils/AxiosWrapper";
 
-const USER_TYPES = {
-  STUDENT: "Student",
-  FACULTY: "Faculty",
-  ADMIN: "Admin",
-};
-
-const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
-  <form
-    className="w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-200"
-    onSubmit={onSubmit}
-  >
-    <div className="mb-6">
-      <label
-        className="block text-gray-800 text-sm font-medium mb-2"
-        htmlFor="email"
-      >
-        {selected} Email
-      </label>
-      <input
-        type="email"
-        id="email"
-        required
-        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={formData.email}
-        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-      />
-    </div>
-    <div className="mb-6">
-      <label
-        className="block text-gray-800 text-sm font-medium mb-2"
-        htmlFor="password"
-      >
-        Password
-      </label>
-      <input
-        type="password"
-        id="password"
-        required
-        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={formData.password}
-        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-      />
-    </div>
-    <div className="flex items-center justify-between mb-6">
-      <Link
-        className="text-sm text-blue-600 hover:underline"
-        to="/forget-password"
-      >
-        Forgot Password?
-      </Link>
-    </div>
-    <CustomButton
-      type="submit"
-      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex justify-center items-center gap-2"
-    >
-      Login
-      <FiLogIn className="text-lg" />
-    </CustomButton>
-  </form>
-);
+const USER_TYPES = ["Student", "Faculty", "Admin"];
 
 const UserTypeSelector = ({ selected, onSelect }) => (
   <div className="flex justify-center gap-4 mb-8">
-    {Object.values(USER_TYPES).map((type) => (
+    {USER_TYPES.map((type) => (
       <button
         key={type}
         onClick={() => onSelect(type)}
@@ -86,70 +27,107 @@ const UserTypeSelector = ({ selected, onSelect }) => (
   </div>
 );
 
+const LoginForm = ({ selected, formData, setFormData, onSubmit }) => (
+  <form
+    className="w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-200"
+    onSubmit={onSubmit}
+  >
+    <div className="mb-6">
+      <label className="block text-gray-800 text-sm font-medium mb-2">
+        {selected} Email
+      </label>
+      <input
+        type="email"
+        required
+        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+      />
+    </div>
+    <div className="mb-6">
+      <label className="block text-gray-800 text-sm font-medium mb-2">
+        Password
+      </label>
+      <input
+        type="password"
+        required
+        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={formData.password}
+        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+      />
+    </div>
+    <div className="flex items-center justify-between mb-6">
+      <Link className="text-sm text-blue-600 hover:underline" to="/forget-password">
+        Forgot Password?
+      </Link>
+    </div>
+    <CustomButton
+      type="submit"
+      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex justify-center items-center gap-2"
+    >
+      Login
+      <FiLogIn className="text-lg" />
+    </CustomButton>
+  </form>
+);
+
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const type = searchParams.get("type");
+  const queryType = searchParams.get("type");
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [selected, setSelected] = useState("Student");
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
-  const [selected, setSelected] = useState(USER_TYPES.STUDENT);
+  // Update user type from query params if available
+  useEffect(() => {
+    if (queryType) {
+      const capitalized = queryType.charAt(0).toUpperCase() + queryType.slice(1);
+      if (USER_TYPES.includes(capitalized)) setSelected(capitalized);
+    }
+  }, [queryType]);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("userToken");
+    const userType = localStorage.getItem("userType");
+    if (token && userType) navigate(`/${userType.toLowerCase()}`);
+  }, [navigate]);
 
   const handleUserTypeSelect = (type) => {
-    const userType = type.toLowerCase();
     setSelected(type);
-    setSearchParams({ type: userType });
+    setSearchParams({ type: type.toLowerCase() });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all fields");
       return;
     }
 
     try {
-      const res = await axiosWrapper.post(
+      const { data } = await axiosWrapper.post(
         `/${selected.toLowerCase()}/login`,
         formData
       );
 
-      // Safe destructuring
-      const responseData = res?.data || res;
-      if (!responseData || !responseData.token) {
-        throw new Error(responseData?.message || "Login failed");
+      if (!data || !data.token) {
+        toast.error(data?.message || "Login failed");
+        return;
       }
 
-      const { token } = responseData;
-      localStorage.setItem("userToken", token);
+      localStorage.setItem("userToken", data.token);
       localStorage.setItem("userType", selected);
-      dispatch(setUserToken(token));
+      dispatch(setUserToken(data.token));
       navigate(`/${selected.toLowerCase()}`);
-    } catch (error) {
-      toast.dismiss();
-      console.error(error);
-      toast.error(error.message || "Login failed");
+      toast.success("Login successful!");
+    } catch (err) {
+      console.error("Login error:", err.response?.data || err);
+      toast.error(err.response?.data?.message || "Login failed");
     }
   };
-
-  useEffect(() => {
-    const userToken = localStorage.getItem("userToken");
-    if (userToken) {
-      navigate(`/${localStorage.getItem("userType").toLowerCase()}`);
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    if (type) {
-      const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
-      setSelected(capitalizedType);
-    }
-  }, [type]);
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-100 via-white to-gray-100 flex items-center justify-center px-4">
@@ -160,9 +138,9 @@ const Login = () => {
         <UserTypeSelector selected={selected} onSelect={handleUserTypeSelect} />
         <LoginForm
           selected={selected}
-          onSubmit={handleSubmit}
           formData={formData}
           setFormData={setFormData}
+          onSubmit={handleSubmit}
         />
       </div>
       <Toaster position="bottom-center" />
