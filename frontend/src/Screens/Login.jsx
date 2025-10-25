@@ -7,13 +7,6 @@ import { setUserToken } from "../redux/actions";
 import CustomButton from "../components/CustomButton";
 import axiosWrapper from "../utils/AxiosWrapper";
 
-/**
- * DEV NOTE:
- * Set DEV_BYPASS_ADMIN = true only for local/dev testing.
- * NEVER enable this in production.
- */
-const DEV_BYPASS_ADMIN = true;
-
 const USER_TYPES = {
   STUDENT: "Student",
   FACULTY: "Faculty",
@@ -38,7 +31,6 @@ const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
       />
     </div>
-
     <div className="mb-6">
       <label className="block text-gray-800 text-sm font-medium mb-2" htmlFor="password">
         Password
@@ -52,13 +44,11 @@ const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
       />
     </div>
-
     <div className="flex items-center justify-between mb-6">
       <Link className="text-sm text-blue-600 hover:underline" to="/forget-password">
         Forgot Password?
       </Link>
     </div>
-
     <CustomButton
       type="submit"
       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex justify-center items-center gap-2"
@@ -76,7 +66,9 @@ const UserTypeSelector = ({ selected, onSelect }) => (
         key={type}
         onClick={() => onSelect(type)}
         className={`px-5 py-2 text-sm font-medium rounded-full transition duration-200 ${
-          selected === type ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+          selected === type
+            ? "bg-blue-600 text-white shadow"
+            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
         }`}
       >
         {type}
@@ -89,23 +81,29 @@ const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryType = searchParams.get("type");
+  const type = searchParams.get("type");
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   const [selected, setSelected] = useState(USER_TYPES.STUDENT);
-  const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (queryType) {
-      const capitalized = queryType.charAt(0).toUpperCase() + queryType.slice(1);
-      if (Object.values(USER_TYPES).includes(capitalized)) setSelected(capitalized);
+    if (type) {
+      const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+      if (Object.values(USER_TYPES).includes(capitalizedType)) {
+        setSelected(capitalizedType);
+      }
     }
-  }, [queryType]);
+  }, [type]);
 
   useEffect(() => {
-    const token = localStorage.getItem("userToken");
+    const userToken = localStorage.getItem("userToken");
     const userType = localStorage.getItem("userType");
-    if (token && userType) {
+    if (userToken && userType) {
       navigate(`/${userType.toLowerCase()}`);
     }
   }, [navigate]);
@@ -123,37 +121,34 @@ const Login = () => {
       return;
     }
 
-    // ===== DEV BYPASS FOR ADMIN =====
-    if (DEV_BYPASS_ADMIN && selected === USER_TYPES.ADMIN) {
-      // Warning: this bypass is ONLY for development/testing.
-      const fakeToken = "dev-admin-bypass-token";
-      localStorage.setItem("userToken", fakeToken);
-      localStorage.setItem("userType", USER_TYPES.ADMIN);
-      dispatch(setUserToken(fakeToken));
-      toast.success("Admin bypassed (DEV). Redirecting to admin dashboard...");
-      navigate("/admin");
-      return;
-    }
-
-    // ===== Normal login flow for other users (and Admin if bypass disabled) =====
     setLoading(true);
     try {
       const res = await axiosWrapper.post(`/${selected.toLowerCase()}/login`, formData);
 
-      // Flexible extraction: support both { token } and { data: { token } } backend shapes
-      const token = res?.data?.data?.token || res?.data?.token || res?.token;
-      const message = res?.data?.message || res?.message;
+      // Debug: inspect the full response if something goes wrong
+      console.log("Login Response (raw):", res);
+
+      // Flexible extraction: support backends that return token at different nesting levels
+      const token =
+        res?.data?.data?.token || // e.g., { success, message, data: { token } }
+        res?.data?.token ||      // e.g., { token, user }
+        res?.token;              // fallback (unlikely for Axios)
+
+      const message = res?.data?.message || res?.message || "";
 
       if (!token) {
+        // show backend-provided message if present, otherwise generic
         toast.error(message || "Login failed");
         setLoading(false);
         return;
       }
 
+      // store token and user type
       localStorage.setItem("userToken", token);
       localStorage.setItem("userType", selected);
       dispatch(setUserToken(token));
-      toast.success("Login successful");
+
+      toast.success("Login successful!");
       navigate(`/${selected.toLowerCase()}`);
     } catch (err) {
       console.error("Login error:", err.response?.data || err);
@@ -166,19 +161,20 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-100 via-white to-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-2xl lg:w-1/2 px-6 py-12">
-        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">{selected} Login</h1>
+        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">
+          {selected} Login
+        </h1>
 
         <UserTypeSelector selected={selected} onSelect={handleUserTypeSelect} />
 
-        <LoginForm selected={selected} onSubmit={handleSubmit} formData={formData} setFormData={setFormData} />
+        <LoginForm
+          selected={selected}
+          onSubmit={handleSubmit}
+          formData={formData}
+          setFormData={setFormData}
+        />
 
-        <div className="mt-4 text-center text-sm text-gray-600">
-          {DEV_BYPASS_ADMIN && selected === USER_TYPES.ADMIN ? (
-            <span className="text-red-600">Dev bypass enabled — admin auth skipped</span>
-          ) : (
-            <span>Make sure you have the correct credentials.</span>
-          )}
-        </div>
+        {loading && <p className="mt-4 text-center text-gray-500">Logging in…</p>}
       </div>
 
       <Toaster position="bottom-center" />
