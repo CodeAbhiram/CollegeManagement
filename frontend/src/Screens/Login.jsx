@@ -19,7 +19,10 @@ const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
     onSubmit={onSubmit}
   >
     <div className="mb-6">
-      <label className="block text-gray-800 text-sm font-medium mb-2" htmlFor="email">
+      <label
+        className="block text-gray-800 text-sm font-medium mb-2"
+        htmlFor="email"
+      >
         {selected} Email
       </label>
       <input
@@ -32,7 +35,10 @@ const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
       />
     </div>
     <div className="mb-6">
-      <label className="block text-gray-800 text-sm font-medium mb-2" htmlFor="password">
+      <label
+        className="block text-gray-800 text-sm font-medium mb-2"
+        htmlFor="password"
+      >
         Password
       </label>
       <input
@@ -41,11 +47,16 @@ const LoginForm = ({ selected, onSubmit, formData, setFormData }) => (
         required
         className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={formData.password}
-        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+        onChange={(e) =>
+          setFormData({ ...formData, password: e.target.value })
+        }
       />
     </div>
     <div className="flex items-center justify-between mb-6">
-      <Link className="text-sm text-blue-600 hover:underline" to="/forget-password">
+      <Link
+        className="text-sm text-blue-600 hover:underline"
+        to="/forget-password"
+      >
         Forgot Password?
       </Link>
     </div>
@@ -83,12 +94,17 @@ const Login = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const type = searchParams.get("type");
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
   const [selected, setSelected] = useState(USER_TYPES.STUDENT);
 
   const handleUserTypeSelect = (type) => {
+    const userType = type.toLowerCase();
     setSelected(type);
-    setSearchParams({ type: type.toLowerCase() });
+    setSearchParams({ type: userType });
   };
 
   const handleSubmit = async (e) => {
@@ -100,23 +116,29 @@ const Login = () => {
     }
 
     try {
-      const res = await axiosWrapper.post(`/${selected.toLowerCase()}/login`, formData);
-      const responseData = res?.data;
+      const res = await axiosWrapper.post(
+        `/${selected.toLowerCase()}/login`,
+        formData
+      );
 
-      // Backend wraps token inside "data"
-      if (!responseData || !responseData.data?.token) {
-        throw new Error(responseData?.message || "Login failed");
+      console.log("Login Response:", res); // debug log
+
+      // Flexible token extraction
+      const token =
+        res?.data?.data?.token || // if wrapped in data
+        res?.data?.token ||       // if direct token
+        res?.token;               // fallback
+
+      if (!token) {
+        throw new Error(res?.data?.message || "Login failed");
       }
 
-      const { token } = responseData.data;
-
-      // Store token and user type
       localStorage.setItem("userToken", token);
       localStorage.setItem("userType", selected);
       dispatch(setUserToken(token));
 
-      toast.success(responseData.message || "Login successful");
       navigate(`/${selected.toLowerCase()}`);
+      toast.success("Login successful!");
     } catch (error) {
       toast.dismiss();
       console.error("Login error:", error);
@@ -133,17 +155,24 @@ const Login = () => {
 
   useEffect(() => {
     if (type) {
-      const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
-      setSelected(capitalized);
+      const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+      setSelected(capitalizedType);
     }
   }, [type]);
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-gray-100 via-white to-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-2xl lg:w-1/2 px-6 py-12">
-        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">{selected} Login</h1>
+        <h1 className="text-4xl font-bold text-gray-800 text-center mb-6">
+          {selected} Login
+        </h1>
         <UserTypeSelector selected={selected} onSelect={handleUserTypeSelect} />
-        <LoginForm selected={selected} onSubmit={handleSubmit} formData={formData} setFormData={setFormData} />
+        <LoginForm
+          selected={selected}
+          onSubmit={handleSubmit}
+          formData={formData}
+          setFormData={setFormData}
+        />
       </div>
       <Toaster position="bottom-center" />
     </div>
